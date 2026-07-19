@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/lightXtool/dev-sw.js?dev-sw', { scope: '/lightXtool/', type: 'classic' })

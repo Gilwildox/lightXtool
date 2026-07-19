@@ -1,115 +1,64 @@
-import { useState } from 'react';
-import { AlertCircle, Mail, Lock, Github, Facebook, Twitter } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Link } from "react-router-dom";
+import { Link } from 'react-router-dom';
 
-const LoginForm = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+// import.meta.glob escanea en BUILD TIME (Vite lo resuelve de forma estática, no es
+// una lectura de disco en runtime). Cada key del objeto es la ruta de un archivo hallado.
+// { eager: false } (default) = NO importa el componente completo, solo lo lista.
+const modules = import.meta.glob('/src/artifacts/*.{tsx,jsx}');
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      setError('Please fill in all fields');
-    } else {
-      setError('');
-      console.log('Login attempted:', { email, password });
-      // Here you would typically handle the login logic
-      alert(`Login attempted: ${email}, ${password}`);
-    }
-  };
+// vite-plugin-pages convierte cada archivo de esta carpeta en una ruta con el MISMO
+// NOMBRE (sin extensión), ej: 'Foo.jsx' -> '/Foo'. Replicamos esa conversión a mano
+// para que el link de cada tarjeta apunte al lugar correcto.
+function pathToRoute(filePath: string) {
+  const name = filePath.split('/').pop()!.replace(/\.(tsx|jsx)$/, '');
+  return { name, route: `/${name}` };
+}
 
-  const handleSocialLogin = (platform: string) => {
-    console.log(`${platform} login attempted`);
-    // Here you would typically handle the social login logic
-    alert(`${platform} login attempted`);
-  };
+const artifacts = Object.keys(modules)
+  .map(pathToRoute)
+  .filter((a) => a.name !== 'index');
 
+// import.meta.env.BASE_URL es el valor de "base" configurado en vite.config.ts
+// ('/lightXtool/'). Las imágenes en public/ referenciadas con ruta absoluta a mano
+// (ej. "/logo.png") NO se ajustan solas a ese base path — hay que anteponerlo
+// manualmente, o se rompen al desplegar en el subpath de GitHub Pages.
+const logoSrc = `${import.meta.env.BASE_URL}logo.png`;
+
+export default function Home() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">Demo Login Component</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <Button type="submit" className="w-full">Log In</Button>
-          </form>
+    <div className="min-h-screen bg-black text-white font-mono p-8">
+      <div className="flex flex-col items-center mb-10">
+        <img src={logoSrc} alt="lightXtool" className="w-full max-w-md" />
+      </div>
 
-          {error && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="relative mt-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 mt-6">
-            <Button variant="outline" className="w-full flex items-center justify-center gap-2" onClick={() => handleSocialLogin('Github')}>
-              <Github className="h-5 w-5" />
-              GitHub
-            </Button>
-            <Button variant="outline" className="w-full flex items-center justify-center gap-2" onClick={() => handleSocialLogin('Facebook')}>
-              <Facebook className="h-5 w-5" />
-              Facebook
-            </Button>
-            <Button variant="outline" className="w-full flex items-center justify-center gap-2" onClick={() => handleSocialLogin('Twitter')}>
-              <Twitter className="h-5 w-5" />
-              Twitter
-            </Button>
-          </div>
-
-          <div className="text-center text-sm mt-6">
-            Don't have an account?{' '}
-            <Link to="signup" className="text-primary hover:underline font-bold">
-              Sign up
+      {artifacts.length === 0 ? (
+        <p className="text-center text-white/50">
+          No hay artifacts todavía. Copia un .tsx/.jsx a src/artifacts/
+        </p>
+      ) : (
+        <div className="grid gap-4 max-w-5xl mx-auto" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+          {artifacts.map((a) => (
+            <Link
+              key={a.route}
+              to={a.route}
+              className="rounded-lg p-4 bg-white/[0.03] border border-brand-cyan/20 hover:border-brand-cyan hover:shadow-[0_0_14px_rgba(0,160,250,0.35)] transition-all text-center"
+            >
+              {a.name}
             </Link>
-          </div>
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      )}
+
+      <footer className="text-center text-xs text-white/40 mt-12 pb-6">
+        lightXtool creado por{' '}
+        <a
+          href="https://www.instagram.com/gilberto_santacolomba/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand-cyan hover:text-brand-cyan-light hover:underline"
+        >
+          Gilberto Santacolomba
+        </a>
+      </footer>
     </div>
   );
-};
-
-export default LoginForm;
+}
