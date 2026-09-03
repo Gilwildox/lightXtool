@@ -22,6 +22,8 @@ const artifacts = Object.keys(modules)
 // (ej. "/logo.png") NO se ajustan solas a ese base path — hay que anteponerlo
 // manualmente, o se rompen al desplegar en el subpath de GitHub Pages.
 const logoSrc = `${import.meta.env.BASE_URL}logo.png`;
+// Versión "dark-bg" porque el sitio es fondo negro fijo (ver manual de identidad).
+const cueForgeLogoSrc = `${import.meta.env.BASE_URL}logocueforge-dark-bg.svg`;
 
 export default function Home() {
   return (
@@ -47,6 +49,40 @@ export default function Home() {
           ))}
         </div>
       )}
+
+      {/* CueForge es un sitio hermano, no un artifact más: se trata como cross-link
+          a otro proyecto (logo + nombre + descripción propia), no como una tarjeta
+          del grid de arriba. Va junto al bloque de donación, no dentro del grid. */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch max-w-3xl mx-auto mt-10">
+        <a
+          href="https://gilwildox.github.io/CueForge/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Ir a CueForge, otro sitio del mismo autor"
+          className="flex-1 flex flex-col items-center justify-center gap-2 rounded-lg p-5 border border-white/20 bg-white/[0.03] hover:border-white/50 hover:bg-white/[0.06] transition-all text-center"
+        >
+          <img src={cueForgeLogoSrc} alt="CueForge" className="h-10" />
+          <span className="text-xs text-white/50">
+            Sistema de guion técnico y ficha técnica para proyectos escénicos
+          </span>
+        </a>
+
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 rounded-lg p-5 border border-brand-cyan/40 bg-brand-cyan/[0.06] shadow-[0_0_14px_rgba(0,160,250,0.15)] text-center">
+          <p className="text-xs text-white/70 leading-relaxed">
+            Si este sitio te ha facilitado el trabajo, considera apoyar el proyecto.
+            Tu contribución ayuda a mantener estas herramientas disponibles y seguir
+            desarrollándolas.
+          </p>
+          <a
+            href="https://link.mercadopago.com.mx/imthelight"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg px-5 py-2.5 text-sm border border-brand-cyan/40 text-brand-cyan bg-brand-cyan/10 hover:border-brand-cyan hover:shadow-[0_0_14px_rgba(0,160,250,0.35)] transition-all tracking-wide"
+          >
+            ☕ Apoya este proyecto
+          </a>
+        </div>
+      </div>
 
       <footer className="text-center text-xs text-white/40 mt-12 pb-6">
         lightXtool creado por{' '}

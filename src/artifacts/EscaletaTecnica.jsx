@@ -160,18 +160,61 @@ function ColorPicker({ value, onChange, C }) {
 // ── ItemPicker: selector/creador reutilizable para Involucrados y Etiquetas.
 // Muestra primero la opción de crear (si el texto no coincide con nada
 // existente) y debajo el listado completo en orden alfabético como toggles.
-// La edición/renombrado y el borrado de items viven en su sección dedicada,
-// no aquí — esto solo asigna/crea. ──────────────────────────────────────
+// El menú flota con position:fixed (no depende del overflow de ningún
+// contenedor padre) y su altura máxima siempre deja scroll visible cuando
+// hay más elementos de los que caben. Se cierra solo al hacer clic fuera o
+// al presionar Escape. La edición/renombrado y el borrado de items viven en
+// su sección dedicada, no aquí — esto solo asigna/crea. ──────────────────
 function ItemPicker({ items, selectedIds, onToggle, onCreate, C, label, placeholder, variant = "solid" }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef(null);
+  const triggerRef = useRef(null);
+  const [menuPos, setMenuPos] = useState(null);
+
+  // Calcula la posición del menú relativa a la ventana (no al padre) cada
+  // vez que se abre, para que ningún overflow:hidden de una tarjeta lo
+  // recorte. Se reubica también si la ventana hace scroll o resize mientras
+  // está abierto.
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const btn = triggerRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      const menuMaxHeight = 260;
+      const spaceBelow = window.innerHeight - r.bottom;
+      const openUpward = spaceBelow < menuMaxHeight && r.top > spaceBelow;
+      setMenuPos({
+        left: Math.min(r.left, window.innerWidth - 240 - 8),
+        top: openUpward ? undefined : r.bottom + 4,
+        bottom: openUpward ? window.innerHeight - r.top + 4 : undefined,
+        maxHeight: menuMaxHeight,
+      });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const onDocClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onDocClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     window.addEventListener("mousedown", onDocClick);
-    return () => window.removeEventListener("mousedown", onDocClick);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", onDocClick);
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [open]);
 
   const sorted = useMemo(
@@ -207,7 +250,7 @@ function ItemPicker({ items, selectedIds, onToggle, onCreate, C, label, placehol
             <X size={10} style={{ cursor: "pointer" }} onClick={() => onToggle(it.id)} />
           </span>
         ))}
-        <button onClick={() => setOpen((v) => !v)} style={{
+        <button ref={triggerRef} onClick={() => setOpen((v) => !v)} style={{
           fontSize: "10px", padding: "2px 8px", borderRadius: "10px", cursor: "pointer",
           background: "transparent", border: `1px dashed ${C.border}`, color: C.textDim,
           display: "inline-flex", alignItems: "center", gap: "3px", fontFamily: FONT,
@@ -216,9 +259,10 @@ function ItemPicker({ items, selectedIds, onToggle, onCreate, C, label, placehol
         </button>
       </div>
 
-      {open && (
+      {open && menuPos && (
         <div style={{
-          position: "absolute", zIndex: 300, top: "26px", left: 0, minWidth: "230px",
+          position: "fixed", zIndex: 300, left: menuPos.left, top: menuPos.top, bottom: menuPos.bottom,
+          width: "230px", maxHeight: menuPos.maxHeight, display: "flex", flexDirection: "column",
           background: C.panel, border: `1px solid ${C.border}`, borderRadius: "6px",
           padding: "8px", boxShadow: "0 4px 20px rgba(0,0,0,.25)",
         }}>
@@ -232,18 +276,19 @@ function ItemPicker({ items, selectedIds, onToggle, onCreate, C, label, placehol
               width: "100%", fontSize: "11px", fontFamily: FONT, padding: "5px 7px",
               borderRadius: "3px", border: `1px solid ${C.border}`,
               background: "transparent", color: C.text, outline: "none", boxSizing: "border-box",
+              flexShrink: 0,
             }}
           />
           {query.trim() && !exactMatch && (
             <button onClick={handleCreate} style={{
               width: "100%", textAlign: "left", marginTop: "6px", fontSize: "11px", fontFamily: FONT,
-              padding: "5px 7px", borderRadius: "3px", cursor: "pointer",
+              padding: "5px 7px", borderRadius: "3px", cursor: "pointer", flexShrink: 0,
               background: "transparent", border: `1px solid ${C.cyan}`, color: C.cyan, fontWeight: 700,
             }}>
               + Crear "{query.trim()}"
             </button>
           )}
-          <div style={{ maxHeight: "170px", overflowY: "auto", marginTop: "6px", display: "flex", flexDirection: "column", gap: "1px" }}>
+          <div style={{ overflowY: "auto", marginTop: "6px", display: "flex", flexDirection: "column", gap: "1px" }}>
             {filtered.length === 0 && (
               <span style={{ fontSize: "10px", color: C.textFaint, padding: "4px" }}>
                 {items.length === 0 ? "Sin elementos aún." : "Sin coincidencias."}
@@ -255,7 +300,7 @@ function ItemPicker({ items, selectedIds, onToggle, onCreate, C, label, placehol
                 <button key={it.id} onClick={() => onToggle(it.id)} style={{
                   display: "flex", alignItems: "center", gap: "6px", textAlign: "left",
                   fontSize: "11px", fontFamily: FONT, padding: "5px 7px", borderRadius: "3px", cursor: "pointer",
-                  background: sel ? `${C.cyan}22` : "transparent", border: "none", color: C.text,
+                  background: sel ? `${C.cyan}22` : "transparent", border: "none", color: C.text, flexShrink: 0,
                 }}>
                   {sel ? <CheckSquare size={13} style={{ color: C.cyan, flexShrink: 0 }} /> : <Square size={13} style={{ color: C.textFaint, flexShrink: 0 }} />}
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.label || "(sin nombre)"}</span>
@@ -1093,19 +1138,26 @@ export default function EscaletaTecnica() {
                     ref={(el) => { cardRefs.current[m.id] = el; }}
                     style={{
                       display: "flex", alignItems: "stretch",
-                      borderRadius: "6px", overflow: "hidden",
+                      borderRadius: "6px",
                       border: `1px solid ${m.color || C.border}`,
                       opacity: dragId === m.id ? 0.45 : 1,
                       transition: "opacity .15s",
                       background: C.panel,
                     }}
                   >
-                    {/* Franja de color + grip: zona de arrastre completa */}
+                    {/* Franja de color + grip: zona de arrastre completa. El
+                        overflow:hidden vive SOLO en este contenedor (para
+                        recortar sus propias esquinas redondeadas), no en la
+                        tarjeta completa — así los menús flotantes de
+                        Involucrados/Etiquetas pueden salirse del borde de la
+                        tarjeta sin ser recortados. */}
                     <div
                       onPointerDown={(e) => handleDragStart(e, m.id)}
                       title="Arrastra para reordenar"
                       style={{
                         width: "28px", flexShrink: 0,
+                        borderTopLeftRadius: "6px", borderBottomLeftRadius: "6px",
+                        overflow: "hidden",
                         background: m.color
                           ? `${m.color}CC`
                           : theme === "dark" ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.06)",
@@ -1117,7 +1169,7 @@ export default function EscaletaTecnica() {
                     </div>
 
                     {/* Contenido de la tarjeta */}
-                    <div style={{ flex: 1, padding: "8px 10px", minWidth: 0 }}>
+                    <div style={{ flex: 1, padding: "8px 10px", minWidth: 0, borderTopRightRadius: "6px", borderBottomRightRadius: "6px", overflow: "visible" }}>
                       {/* Fila principal (siempre visible) */}
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                         <input
